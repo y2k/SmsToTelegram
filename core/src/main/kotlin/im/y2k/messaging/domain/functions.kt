@@ -2,6 +2,9 @@
 
 package im.y2k.messaging.domain
 
+import im.y2k.messaging.domain.Domain.getCreateBotTarget
+import im.y2k.messaging.domain.Domain.getOpenSettingsTarget
+import im.y2k.messaging.domain.Domain.isValid
 import im.y2k.messaging.utils.*
 import im.y2k.messaging.infrastructure.Bot as bot
 
@@ -13,6 +16,12 @@ object Domain {
     fun getPinCode(androidId: String): String =
         String.format("%04d", androidId.hashCode()).takeLast(4)
 
+    fun isValid(sbn: Notification): Boolean =
+        sbn.packageName == "com.google.android.talk" && sbn.tickerText != null
+
+    fun getCreateBotTarget() = TargetUrl("https://telegram.me/BotFather")
+    fun getOpenSettingsTarget() = TargetAction("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+
     fun handleMessage(message: Message, pincode: String): String {
         return when (message.message) {
             pincode -> TODO()
@@ -21,21 +30,18 @@ object Domain {
     }
 }
 
-/**
-344455991:AAFy8a3Cr4jPhKBGyA75AZrle2W1nww67nA
- */
-fun waitForConnect(): IO<Unit> = async {
-    //    val token = env.getPref("token").await()!!
-//    bot.waitToConnect(token).await()
-
-    val messages = env.getPref("token")
-        .bind { bot.getNewMessages(it!!, 3000) }
-        .await()
-
-//    val message = bot.getNewMessages(token, 3000).await()
-
-    Unit
-}
+//fun waitForConnect(): IO<Unit> = async {
+//    //    val token = env.getPref("token").await()!!
+////    bot.waitToConnect(token).await()
+//
+//    val messages = env.getPref("token")
+//        .bind { bot.getNewMessages(it!!, 3000) }
+//        .await()
+//
+////    val message = bot.getNewMessages(token, 3000).await()
+//
+//    Unit
+//}
 
 fun getToken(): IO<String> =
     ask { secureID().fmap { Domain.getPinCode(it) } }
@@ -46,18 +52,11 @@ fun loadCurrentBotToken(): IO<String> =
 fun saveBotToken(token: String): IO<Unit> =
     ask { setPref("token", token) }
 
-/**
- * (com.google.android.talk * Ксения Петрова: Привет) -> ()
- * (com.google.android.talk * Ксения Петрова: отправлен стикер) -> ()
- */
 fun handleNotification(sbn: Notification): IO<Unit> =
     when {
         isValid(sbn) -> sendMessage("" + sbn.tickerText)
         else -> pure(Unit)
     }
-
-private fun isValid(sbn: Notification): Boolean =
-    sbn.packageName == "com.google.android.talk" && sbn.tickerText != null
 
 private fun sendMessage(message: String): IO<Unit> =
     ask {
@@ -68,8 +67,5 @@ private fun sendMessage(message: String): IO<Unit> =
         }
     }
 
-fun openCreateBot(): IO<Unit> =
-    ask { open(TargetUrl("https://telegram.me/BotFather")) }
-
-fun openNotificationSettings(): IO<Unit> =
-    ask { open(TargetAction("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")) }
+fun openCreateBot(): IO<Unit> = ask { open(getCreateBotTarget()) }
+fun openNotificationSettings(): IO<Unit> = ask { open(getOpenSettingsTarget()) }

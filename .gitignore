@@ -2,3 +2,5 @@ android/build
 build
 core/.gradle
 *.iml
+.gradle
+.idea

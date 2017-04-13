@@ -1,5 +1,6 @@
 package im.y2k.messaging.client
 
+import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -72,15 +73,24 @@ private fun _LinearLayout.header(index: Int, title: String) {
 }
 
 private fun _LinearLayout.componentBotToken() {
-    editText {
-        hint = "Токен"
-        loadCurrentBotToken().run(env) {
-            setText(it)
-        }
-        textChangedListener {
-            afterTextChanged {
-                saveBotToken("" + it).run(env)
+    linearLayout {
+        orientation = HORIZONTAL
+        editText {
+            lparams { weight = 1f }
+            hint = "Токен"
+            loadCurrentBotToken().run(env) {
+                setText(it)
             }
+            textChangedListener {
+                afterTextChanged {
+                    saveBotToken("" + it).run(env)
+                }
+            }
+        }
+        button("OK") {
+            textSize = 24f
+            lparams { weight = 0f }
+            onClick { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Domain.getHelpPage()))) }
         }
     }
 }
@@ -89,14 +99,14 @@ private fun _LinearLayout.componentCreateBot() {
     linearLayout {
         orientation = HORIZONTAL
         button("Открыть телеграм") {
-            textSize = 24f
             lparams { weight = 1f }
+            textSize = 24f
             onClickIO { openCreateBot() }
         }
         button("?") {
-            textSize = 24f
             lparams { weight = 0f }
-            onClick { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Domain.getHelpPage()))) }
+            textSize = 24f
+            onClick { (context as Activity).recreate() }
         }
     }
 }

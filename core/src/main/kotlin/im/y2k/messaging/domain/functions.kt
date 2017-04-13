@@ -12,6 +12,13 @@ object Domain {
 
     fun getPinCode(androidId: String): String =
         String.format("%04d", androidId.hashCode()).takeLast(4)
+
+    fun handleMessage(message: Message, pincode: String): String {
+        return when (message.message) {
+            pincode -> TODO()
+            else -> "Введите пинкод для связи бота с вашим аккаунтом"
+        }
+    }
 }
 
 /**

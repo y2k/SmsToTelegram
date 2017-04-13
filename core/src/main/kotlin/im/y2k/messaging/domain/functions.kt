@@ -30,27 +30,11 @@ object Domain {
     }
 }
 
-//fun waitForConnect(): IO<Unit> = async {
-//    //    val token = env.getPref("token").await()!!
-////    bot.waitToConnect(token).await()
-//
-//    val messages = env.getPref("token")
-//        .bind { bot.getNewMessages(it!!, 3000) }
-//        .await()
-//
-////    val message = bot.getNewMessages(token, 3000).await()
-//
-//    Unit
-//}
-
-fun getToken(): IO<String> =
-    ask { secureID().fmap { Domain.getPinCode(it) } }
-
-fun loadCurrentBotToken(): IO<String> =
-    ask { getPref("token").fmap { it ?: "" } }
-
-fun saveBotToken(token: String): IO<Unit> =
-    ask { setPref("token", token) }
+fun getToken(): IO<String> = ask { secureID().fmap { Domain.getPinCode(it) } }
+fun loadCurrentBotToken(): IO<String> = ask { getPref("token").fmap { it ?: "" } }
+fun saveBotToken(token: String): IO<Unit> = ask { setPref("token", token) }
+fun openCreateBot(): IO<Unit> = ask { open(getCreateBotTarget()) }
+fun openNotificationSettings(): IO<Unit> = ask { open(getOpenSettingsTarget()) }
 
 fun handleNotification(sbn: Notification): IO<Unit> =
     when {
@@ -66,6 +50,3 @@ private fun sendMessage(message: String): IO<Unit> =
             }
         }
     }
-
-fun openCreateBot(): IO<Unit> = ask { open(getCreateBotTarget()) }
-fun openNotificationSettings(): IO<Unit> = ask { open(getOpenSettingsTarget()) }

@@ -10,7 +10,6 @@ import im.y2k.messaging.infrastructure.Bot as bot
 
 object Domain {
 
-    //    fun getHelpPage() = "https://github.com/y2k/SmsToTelegram/wiki/Создание-бота-через-Telegram"
     fun getHelpPage() = "https://github.com/y2k/SmsToTelegram/blob/master/docs/CREATEBOT.md"
 
     fun getPinCode(androidId: String): String =
@@ -24,7 +23,7 @@ object Domain {
 
     fun handleMessage(message: Message, pincode: String): String {
         return when (message.message) {
-            pincode -> TODO()
+            pincode -> "Бот будет слать вам сообщения с телефона"
             else -> "Введите пинкод для связи бота с вашим аккаунтом"
         }
     }

@@ -29,11 +29,20 @@ object Domain {
     }
 }
 
-fun getToken(): IO<String> = ask { secureID().fmap { Domain.getPinCode(it) } }
-fun loadCurrentBotToken(): IO<String> = ask { getPref("token").fmap { it ?: "" } }
-fun saveBotToken(token: String): IO<Unit> = ask { setPref("token", token) }
-fun openCreateBot(): IO<Unit> = ask { open(getCreateBotTarget()) }
-fun openNotificationSettings(): IO<Unit> = ask { open(getOpenSettingsTarget()) }
+fun getToken(): IO<String> =
+    ask { secureID().fmap { Domain.getPinCode(it) } }
+
+fun loadCurrentBotToken(): IO<String> =
+    ask { getPref("token").fmap { it ?: "" } }
+
+fun saveBotToken(token: String): IO<Unit> =
+    ask { setPref("token", token) }
+
+fun openCreateBot(): IO<Unit> =
+    ask { open(getCreateBotTarget()) }
+
+fun openNotificationSettings(): IO<Unit> =
+    ask { open(getOpenSettingsTarget()) }
 
 fun handleNotification(sbn: Notification): IO<Unit> =
     when {
@@ -41,11 +50,8 @@ fun handleNotification(sbn: Notification): IO<Unit> =
         else -> pure(Unit)
     }
 
-private fun sendMessage(message: String): IO<Unit> =
-    ask {
-        getPref("user").bind { id ->
-            getPref("token").bind { token ->
-                bot.sendMessage(id!!, token!!.toInt(), message)
-            }
-        }
-    }
+private fun sendMessage(message: String): IO<Unit> = ask {
+    getPref("user")
+        .zip(getPref("token"))
+        .bind { (id, token) -> bot.sendMessage(id!!, token!!.toInt(), message) }
+}

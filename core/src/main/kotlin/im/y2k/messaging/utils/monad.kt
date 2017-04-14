@@ -26,6 +26,9 @@ fun ask(): IO<Environment> =
 fun <T, R> IO<T>.fmap(f: (T) -> R): IO<R> = map { (env, x) -> env to f(x) }
 fun <T, R> IO<T>.bind(f: (T) -> IO<R>): IO<R> = flatMap { (_, x) -> f(x) }
 
+fun <T, R> IO<T>.zip(next: IO<R>): IO<Pair<T, R>> =
+    bind { t -> next.fmap { r -> t to r } }
+
 fun <T> IO<T>.run(env: Environment) {
     subscribe(EnvSingleSubscriber(env, {}))
 }

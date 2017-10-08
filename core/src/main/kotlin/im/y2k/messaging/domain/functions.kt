@@ -21,8 +21,8 @@ object Domain {
     fun getCreateBotTarget() = TargetUrl("https://telegram.me/BotFather")
     fun getOpenSettingsTarget() = TargetAction("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
 
-    fun handleMessage(message: Message, pincode: String): String {
-        return when (message.message) {
+    fun handleMessage(message: String, pincode: String): String {
+        return when (message) {
             pincode -> "Бот будет слать вам сообщения с телефона"
             else -> "Введите пинкод для связи бота с вашим аккаунтом"
         }

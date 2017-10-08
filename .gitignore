@@ -4,3 +4,4 @@ core/.gradle
 *.iml
 .gradle
 .idea
+local.properties

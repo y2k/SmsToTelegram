@@ -1,21 +1,60 @@
 package im.y2k.messaging.infrastructure
 
+import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.TelegramBotAdapter
 import com.pengrad.telegrambot.UpdatesListener
 import com.pengrad.telegrambot.request.GetUpdates
 import com.pengrad.telegrambot.request.SendMessage
+import im.y2k.messaging.domain.Domain.getPinCode
+import im.y2k.messaging.domain.Domain.handleMessage
 import im.y2k.messaging.domain.Message
 import im.y2k.messaging.utils.*
 
-object ActiveBot {
+object UpdateReceiver {
+
+    private var count = 0
+    private var bot: TelegramBot? = null
+
+    fun reset() {
+        if (count <= 0) return
+
+        bot!!.removeGetUpdatesListener()
+        bot = TelegramBotAdapter.build(getToken())
+        setBotUpdates()
+    }
 
     fun start() {
-        // TODO
+        if (count == 0) {
+            bot = TelegramBotAdapter.build(getToken())
+            setBotUpdates()
+        }
+        count++
+    }
+
+    private fun setBotUpdates() {
+        val bot_ = bot!!
+        bot_.setUpdatesListener { updates ->
+            updates
+                .map {
+                    it.message().from().id() to
+                        handleMessage(it.message().text(), getPinCode())
+                }
+                .forEach { (id, msg) ->
+                    bot_.execute(SendMessage(id, msg))
+                }
+            UpdatesListener.CONFIRMED_UPDATES_ALL
+        }
     }
 
     fun stop() {
-        // TODO
+        count--
+        if (count == 0)
+            bot!!.removeGetUpdatesListener()
     }
+
+    private fun getPinCode(): String = getPinCode(getAndroidSecureId())
+    private fun getAndroidSecureId(): String = TODO()
+    private fun getToken(): String = TODO()
 }
 
 class Bot {

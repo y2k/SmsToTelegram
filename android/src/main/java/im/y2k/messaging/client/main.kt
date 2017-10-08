@@ -1,16 +1,14 @@
 package im.y2k.messaging.client
 
-import android.app.Activity
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.view.Gravity
 import android.widget.LinearLayout.HORIZONTAL
-import im.y2k.messaging.domain.*
-import im.y2k.messaging.infrastructure.ActiveBot
+import im.y2k.messaging.domain.getToken
+import im.y2k.messaging.domain.openNotificationSettings
+import im.y2k.messaging.infrastructure.UpdateReceiver
 import im.y2k.messaging.utils.run
 import org.jetbrains.anko.*
 
@@ -44,12 +42,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        ActiveBot.start()
+        UpdateReceiver.start()
     }
 
     override fun onStop() {
         super.onStop()
-        ActiveBot.stop()
+        UpdateReceiver.stop()
     }
 }
 
@@ -75,39 +73,39 @@ private fun _LinearLayout.header(index: Int, title: String) {
 private fun _LinearLayout.componentBotToken() {
     linearLayout {
         orientation = HORIZONTAL
-        editText {
-            lparams { weight = 1f }
-            hint = "Токен"
-            loadCurrentBotToken().run(env) {
-                setText(it)
-            }
-            textChangedListener {
-                afterTextChanged {
-                    saveBotToken("" + it).run(env)
-                }
-            }
-        }
-        button("OK") {
-            textSize = 24f
-            lparams { weight = 0f }
-            onClick { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Domain.getHelpPage()))) }
-        }
+//        editText {
+//            lparams { weight = 1f }
+//            hint = "Токен"
+//            loadCurrentBotToken().run(env) {
+//                setText(it)
+//            }
+//            textChangedListener {
+//                afterTextChanged {
+//                    saveBotToken("" + it).run(env)
+//                }
+//            }
+//        }
+//        button("OK") {
+//            textSize = 24f
+//            lparams { weight = 0f }
+//            onClick { UpdateReceiver.reset() }
+//        }
     }
 }
 
 private fun _LinearLayout.componentCreateBot() {
     linearLayout {
-        orientation = HORIZONTAL
-        button("Открыть телеграм") {
-            lparams { weight = 1f }
-            textSize = 24f
-            onClickIO { openCreateBot() }
-        }
-        button("?") {
-            lparams { weight = 0f }
-            textSize = 24f
-            onClick { (context as Activity).recreate() }
-        }
+        //        orientation = HORIZONTAL
+//        button("Открыть телеграм") {
+//            lparams { weight = 1f }
+//            textSize = 24f
+//            onClickIO { openCreateBot() }
+//        }
+//        button("?") {
+//            lparams { weight = 0f }
+//            textSize = 24f
+//            onClick { (context as Activity).recreate() }
+//        }
     }
 }
 

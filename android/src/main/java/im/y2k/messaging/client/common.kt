@@ -15,13 +15,13 @@ import im.y2k.messaging.utils.Environment
 import im.y2k.messaging.utils.IO
 import im.y2k.messaging.utils.pure
 import im.y2k.messaging.utils.run
-import org.jetbrains.anko.onClick
 import java.io.Serializable
 
 @Suppress("UNCHECKED_CAST")
 fun <T : Serializable> Intent.getExtra(key: String): T = getSerializableExtra(key) as T
 
-fun View.onClickIO(f: (Context) -> IO<Unit>) = onClick { f(context).run(env) }
+fun View.onClickIO(f: (Context) -> IO<Unit>) =
+    setOnClickListener { f(context).run(env) }
 
 private val HANDLER by lazy { Handler(Looper.getMainLooper()) }
 

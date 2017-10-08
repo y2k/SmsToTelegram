@@ -4,6 +4,10 @@ import rx.Subscription
 import java.util.*
 import java.util.concurrent.CountDownLatch
 
+sealed class Either<T>
+class Left<T> : Either<T>()
+class Right<T>(val value: T) : Either<T>()
+
 fun <R> ignore0(): R = TODO()
 fun <T, R> ignore1(a: T): R = TODO()
 fun <T1, T2, R> ignore2(a: T1, b: T2): R = TODO()

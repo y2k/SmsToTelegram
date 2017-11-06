@@ -61,4 +61,6 @@ dependencies {
     compile "org.jetbrains.anko:anko-appcompat-v7:$anko_version"
 
     testCompile 'junit:junit:4.12'
+
+    compile 'com.github.y2k:litho-elmish:2f25b01b6c'
 }

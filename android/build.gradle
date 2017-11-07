@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 26
-    buildToolsVersion '25.0.3'
+    buildToolsVersion '27.0.1'
 
     defaultConfig {
         applicationId "im.y2k.messaging.client"
@@ -43,24 +43,19 @@ kotlin {
 
 repositories {
     jcenter()
+    maven { url 'https://maven.google.com' }
+    maven { url 'https://jitpack.io' }
 }
 dependencies {
     compile project(":core")
 
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
-    compile 'com.android.support:appcompat-v7:26.0.0-alpha1'
+//    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+//        exclude group: 'com.android.support', module: 'support-annotations'
+//    })
+    compile 'com.android.support:appcompat-v7:26.1.0'
 
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-//    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.11-rc'
-
-    compile "org.jetbrains.anko:anko-sdk15:$anko_version"
-    compile "org.jetbrains.anko:anko-support-v4:$anko_version"
-    compile "org.jetbrains.anko:anko-appcompat-v7:$anko_version"
+    compile 'com.github.y2k:litho-elmish:2f25b01b6c'
 
     testCompile 'junit:junit:4.12'
-
-    compile 'com.github.y2k:litho-elmish:2f25b01b6c'
 }

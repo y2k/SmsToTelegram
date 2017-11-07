@@ -5,8 +5,8 @@ import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import im.y2k.messaging.domain.Notification
-import im.y2k.messaging.domain.handleNotification
-import im.y2k.messaging.utils.runSync
+import im.y2k.messaging.domain.NotificationWithToken
+import im.y2k.messaging.domain.notificationActor
 
 class NotificationListener : NotificationListenerService() {
 
@@ -21,11 +21,17 @@ class NotificationListener : NotificationListenerService() {
 
     class WorkService : IntentService("work-service") {
 
-        override fun onHandleIntent(intent: Intent) =
+        override fun onHandleIntent(intent: Intent) {
             intent
                 .getExtra<Notification>(KEY)
-                .let(::handleNotification)
-                .runSync(env())
+                .let {
+                    val prefs = getSharedPreferences("default", 0)
+                    NotificationWithToken(it,
+                        prefs.getString("id", ""),
+                        prefs.getString("token", ""))
+                }
+                .let(notificationActor::offer)
+        }
     }
 
     companion object {

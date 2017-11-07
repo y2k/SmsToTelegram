@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings.Secure
 import android.view.View
+import com.facebook.soloader.SoLoader
 import im.y2k.messaging.domain.TargetAction
 import im.y2k.messaging.domain.TargetUrl
 import im.y2k.messaging.utils.Environment
@@ -32,6 +33,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Instance = this
+        SoLoader.init(this, false)
     }
 
     companion object {

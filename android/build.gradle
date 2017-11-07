@@ -47,15 +47,14 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 dependencies {
-    compile project(":core")
-
-//    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
-//        exclude group: 'com.android.support', module: 'support-annotations'
-//    })
     compile 'com.android.support:appcompat-v7:26.1.0'
 
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.19.3'
+
+    compile 'com.github.pengrad:java-telegram-bot-api:3.4.0'
+
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    compile 'com.github.y2k:litho-elmish:2f25b01b6c'
+    compile 'com.github.y2k:litho-elmish:1edbf05aec'
 
     testCompile 'junit:junit:4.12'
 }

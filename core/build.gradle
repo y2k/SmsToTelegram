@@ -19,8 +19,9 @@ repositories {
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-    compile 'com.github.pengrad:java-telegram-bot-api:2.3.1.1'
-    compile 'io.reactivex:rxjava:1.2.9'
+    compile 'com.github.pengrad:java-telegram-bot-api:3.4.0'
+
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.19.3'
 
     testCompile 'junit:junit:4.12'
 }

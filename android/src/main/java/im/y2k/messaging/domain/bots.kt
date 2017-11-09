@@ -1,18 +1,17 @@
-package im.y2k.messaging.infrastructure
+package im.y2k.messaging.domain
 
-import com.pengrad.telegrambot.Callback
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.TelegramBotAdapter
 import com.pengrad.telegrambot.UpdatesListener
+import com.pengrad.telegrambot.model.Update
 import com.pengrad.telegrambot.request.GetUpdates
 import com.pengrad.telegrambot.request.SendMessage
-import com.pengrad.telegrambot.response.SendResponse
+import im.y2k.messaging.client.Result
+import im.y2k.messaging.client.executeAsync
+import im.y2k.messaging.client.map
 import im.y2k.messaging.domain.Domain.getPinCode
 import im.y2k.messaging.domain.Domain.handleMessage
-import im.y2k.messaging.domain.Message
 import kotlinx.coroutines.experimental.channels.actor
-import java.io.IOException
-import kotlin.coroutines.experimental.suspendCoroutine
 
 object UpdateReceiver {
 
@@ -61,7 +60,10 @@ object UpdateReceiver {
     private fun getToken(): String = TODO()
 }
 
-class TelegramMsg(val id: Int, val text: String, val token: String)
+suspend fun loadNewMessages(): Result<List<Update>, Exception> =
+    TelegramBot("TODO") // FIXME
+        .executeAsync(GetUpdates())
+        .map { it.updates() }
 
 val botActor = actor<TelegramMsg> {
     val startMsg = receive()
@@ -74,43 +76,28 @@ val botActor = actor<TelegramMsg> {
     }
 }
 
-private suspend fun TelegramBot.executeAsync(message: SendMessage): Result<Unit, Exception> =
-    suspendCoroutine {
-        execute(message, object : Callback<SendMessage, SendResponse> {
-            override fun onResponse(request: SendMessage?, response: SendResponse?) {
-                it.resume(Ok(Unit))
-            }
-
-            override fun onFailure(request: SendMessage?, e: IOException) {
-                it.resume(Error(e))
-            }
-        })
-    }
-
-sealed class Result<out T, out E>
-class Ok<out T>(val value: T) : Result<T, Nothing>()
-class Error<out E>(val error: E) : Result<Nothing, E>()
-
 class Bot {
 
     companion object {
 
         suspend fun getNewMessages(token: String, delayMs: Int): List<Message> {
-            val env = getEnvironment()
-            return suspendCoroutine { callback ->
-                val bot = openBot(token)
-                bot.setUpdatesListener({ updates ->
-                    val messages = updates.map {
-                        Message(
-                            "" + it.message().from().id(),
-                            it.message().text())
-                    }
-                    callback.resume(messages)
+            TODO()
 
-                    env.runOnMain { bot.removeGetUpdatesListener() }
-                    UpdatesListener.CONFIRMED_UPDATES_ALL
-                }, GetUpdates().timeout(delayMs / 1000))
-            }
+//            val env = getEnvironment()
+//            return suspendCoroutine { callback ->
+//                val bot = openBot(token)
+//                bot.setUpdatesListener({ updates ->
+//                    val messages = updates.map {
+//                        Message(
+//                            "" + it.message().from().id(),
+//                            it.message().text())
+//                    }
+//                    callback.resume(messages)
+//
+//                    env.runOnMain { bot.removeGetUpdatesListener() }
+//                    UpdatesListener.CONFIRMED_UPDATES_ALL
+//                }, GetUpdates().timeout(delayMs / 1000))
+//            }
         }
 
         class Environment {
@@ -119,24 +106,26 @@ class Bot {
 
         @Deprecated("")
         suspend fun waitToConnect(token: String) {
-            val env = getEnvironment()
-            suspendCoroutine<Unit> { callback ->
-                openBot(token).apply {
-                    setUpdatesListener { updates ->
-                        updates.forEach {
-                            env.setPref(
-                                it.message().from().username(),
-                                "" + it.message().chat().id())
-                        }
+            TODO()
 
-                        env.runOnMain {
-                            callback.resume(Unit)
-                            removeGetUpdatesListener()
-                        }
-                        UpdatesListener.CONFIRMED_UPDATES_ALL
-                    }
-                }
-            }
+//            val env = getEnvironment()
+//            suspendCoroutine<Unit> { callback ->
+//                openBot(token).apply {
+//                    setUpdatesListener { updates ->
+//                        updates.forEach {
+//                            env.setPref(
+//                                it.message().from().username(),
+//                                "" + it.message().chat().id())
+//                        }
+//
+//                        env.runOnMain {
+//                            callback.resume(Unit)
+//                            removeGetUpdatesListener()
+//                        }
+//                        UpdatesListener.CONFIRMED_UPDATES_ALL
+//                    }
+//                }
+//            }
         }
 
         private fun getEnvironment() = Environment()

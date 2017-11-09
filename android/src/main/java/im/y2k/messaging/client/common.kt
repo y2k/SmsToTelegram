@@ -1,32 +1,62 @@
 package im.y2k.messaging.client
 
 import android.app.Application
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings.Secure
-import android.view.View
+import android.provider.Settings
+import com.facebook.litho.ComponentContext
 import com.facebook.soloader.SoLoader
-import im.y2k.messaging.domain.TargetAction
-import im.y2k.messaging.domain.TargetUrl
-import im.y2k.messaging.utils.Environment
-import im.y2k.messaging.utils.IO
-import im.y2k.messaging.utils.pure
-import im.y2k.messaging.utils.run
+import com.pengrad.telegrambot.Callback
+import com.pengrad.telegrambot.TelegramBot
+import com.pengrad.telegrambot.request.BaseRequest
+import com.pengrad.telegrambot.response.BaseResponse
+import java.io.IOException
 import java.io.Serializable
+import kotlin.coroutines.experimental.suspendCoroutine
+
+sealed class Result<out T, out E>
+class Ok<out T>(val value: T) : Result<T, Nothing>()
+class Error<out E>(val error: E) : Result<Nothing, E>()
+
+fun <T, E, R> Result<T, E>.map(f: (T) -> R): Result<R, E> = when (this) {
+    is Ok -> Ok(f(value))
+    is Error -> this
+}
+
+suspend fun <T : BaseRequest<T, R>, R : BaseResponse> TelegramBot.executeAsync(request: T): Result<R, Exception> =
+    suspendCoroutine {
+        execute(request, object : Callback<T, R> {
+            override fun onResponse(request: T, response: R) {
+                it.resume(Ok(response))
+            }
+
+            override fun onFailure(request: T, e: IOException) {
+                it.resume(Error(e))
+            }
+        })
+    }
+
+fun getAndroidId(resolver: ContentResolver): String =
+    Settings.Secure.getString(resolver, Settings.Secure.ANDROID_ID)
+
+fun openTelegram(ctx: ComponentContext) =
+    "https://telegram.me/BotFather"
+        .let(Uri::parse)
+        .let(::makeIntentView)
+        .let(ctx::startActivity)
+
+private fun makeIntentView(uri: Uri) =
+    Intent(Intent.ACTION_VIEW, uri)
+
+fun openSettings(ctx: ComponentContext) =
+    "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"
+        .let(::Intent)
+        .let(ctx::startActivity)
 
 @Suppress("UNCHECKED_CAST")
 fun <T : Serializable> Intent.getExtra(key: String): T = getSerializableExtra(key) as T
-
-fun View.onClickIO(f: (Context) -> IO<Unit>) =
-    setOnClickListener { f(context).run(env) }
-
-private val HANDLER by lazy { Handler(Looper.getMainLooper()) }
-
-val View.env: Environment get() = context.env()
 
 class App : Application() {
 
@@ -40,35 +70,3 @@ class App : Application() {
         lateinit var Instance: Context
     }
 }
-
-fun Context.env() = Environment(
-    open = { target ->
-        pure {
-            when (target) {
-                is TargetUrl -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target.url)))
-                is TargetAction -> startActivity(Intent(target.action))
-            }
-            Unit
-        }
-    },
-    runOnMain = { HANDLER.post(it) },
-    getPref = { key ->
-        pure {
-            prefs.getString(key, null)
-        }
-    },
-    setPref = { key, value ->
-        pure {
-            prefs.edit().putString(key, value).apply()
-            Unit
-        }
-    },
-    secureID = {
-        pure {
-            Secure.getString(contentResolver, Secure.ANDROID_ID)
-        }
-    }
-)
-
-private val Context.prefs: SharedPreferences
-    get() = getSharedPreferences("default", 0)

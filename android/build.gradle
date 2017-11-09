@@ -54,7 +54,7 @@ dependencies {
     compile 'com.github.pengrad:java-telegram-bot-api:3.4.0'
 
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    compile 'com.github.y2k:litho-elmish:1edbf05aec'
+    compile 'com.github.y2k:litho-elmish:74be258a3c'
 
     testCompile 'junit:junit:4.12'
 }

@@ -1,107 +1,44 @@
 package im.y2k.messaging.client
 
 import android.app.Activity
-import android.content.ContentResolver
-import android.content.Intent
-import android.net.Uri
+import android.graphics.Color
 import android.os.Bundle
-import android.provider.Settings.Secure.ANDROID_ID
-import android.provider.Settings.Secure.getString
-import com.facebook.litho.ComponentContext
-import com.facebook.litho.ComponentLayout
-import com.facebook.litho.ComponentLayout.ContainerBuilder
 import im.y2k.messaging.client.MainScreen.Model
 import im.y2k.messaging.client.MainScreen.Msg
 import im.y2k.messaging.client.MainScreen.Msg.*
-import im.y2k.messaging.domain.Domain
+import im.y2k.messaging.domain.ValidationResult
+import im.y2k.messaging.domain.getToken
+import im.y2k.messaging.domain.validateSettings
 import y2k.litho.elmish.*
 
-fun openTelegram(ctx: ComponentContext) =
-    "https://telegram.me/BotFather"
-        .let(Uri::parse)
-        .let(::makeIntentView)
-        .let(ctx::startActivity)
-
-private fun makeIntentView(uri: Uri) =
-    Intent(Intent.ACTION_VIEW, uri)
-
-fun openSettings(ctx: ComponentContext) =
-    "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"
-        .let(::Intent)
-        .let(ctx::startActivity)
-
-fun getToken(ctx: ComponentContext): String =
-    ctx.contentResolver
-        .let(::getAndroidId)
-        .let(Domain::getPinCode)
-
-private fun getAndroidId(resolver: ContentResolver): String =
-    getString(resolver, ANDROID_ID)
-
-fun <T, R> Cmd_fromContext(f: ComponentContext.() -> R, fOk: (R) -> T): Cmd<T> =
-    object : Cmd<T> {
-        suspend override fun handle(ctx: ComponentContext): T? = fOk(ctx.f())
-    }
-
-fun <T> Cmd_fromContext(f: ComponentContext.() -> Unit): Cmd<T> =
-    object : Cmd<T> {
-        suspend override fun handle(ctx: ComponentContext): T? {
-            ctx.f()
-            return null
-        }
-    }
-
-fun ContainerBuilder.children(vararg xs: Contextual<ComponentLayout.Builder>) =
-    xs.forEach(this::child)
-
 object MainScreen : ElmFunctions<Model, Msg> {
-    data class Model(val token: String?)
+    data class Model(val token: String?, val status: ValidationResult?)
     sealed class Msg {
         class TokenLoaded(val token: String) : Msg()
         object OpenSettings : Msg()
         object OpenTelegram : Msg()
+        object ValidateMsg : Msg()
+        class ValidateResultMsg(val status: ValidationResult) : Msg()
     }
 
     override fun init() =
-        Model(null) to Cmd_fromContext(::getToken, ::TokenLoaded)
+        Model(null, null) to Cmd.fromContext(::getToken, ::TokenLoaded)
 
     override fun update(model: Model, msg: Msg) = when (msg) {
         is TokenLoaded -> model.copy(token = msg.token) to Cmd.none<Msg>()
-        OpenSettings -> model to Cmd_fromContext(::openSettings)
-        OpenTelegram -> model to Cmd_fromContext(::openTelegram)
+        OpenSettings -> model to Cmd.fromContext(::openSettings)
+        OpenTelegram -> model to Cmd.fromContext(::openTelegram)
+        ValidateMsg -> model to Cmd.fromContext(::validateSettings, ::ValidateResultMsg)
+        is ValidateResultMsg -> model.copy(status = msg.status) to Cmd.none()
     }
 
     override fun view(model: Model) =
         column {
             children(
-                text {
-                    text("1) Доступ к нотификациям")
-                    textSizeSp(18f)
-                },
-                column {
-                    child(text { l ->
-                        text("Настройки")
-                        textSizeSp(18f)
-                        onClick(l, OpenSettings)
-                    })
-                    backgroundRes(android.R.drawable.btn_default)
-                },
-                text {
-                    text("2) Создать бота")
-                    textSizeSp(18f)
-                },
-                column {
-                    child(text { l ->
-                        text("Открыть telegram")
-                        textSizeSp(18f)
-                        onClick(l, OpenTelegram)
-                    })
-                    backgroundRes(android.R.drawable.btn_default)
-                },
-                text {
-                    text("3) Авторизировать бота")
-                    textSizeSp(18f)
-                },
+                head("1) Доступ к нотификациям"),
+                button("Настройки", OpenSettings),
+
+                head("2) Создать бота и ввести ему токен"),
                 text {
                     text("Токен")
                     textSizeSp(16f)
@@ -110,27 +47,41 @@ object MainScreen : ElmFunctions<Model, Msg> {
                     editable(false)
                     text(model.token)
                     textSizeSp(16f)
+                },
+                button("Открыть telegram", OpenTelegram),
+
+                head("3) Протестировать настройки"),
+                button("OK", ValidateMsg),
+                text {
+                    text(model.status.format())
+                    textColor(Color.RED)
+                    textSizeSp(16f)
                 })
         }
+
+    private fun head(title: String) =
+        text {
+            text(title)
+            textSizeSp(18f)
+        }
+
+    private fun button(title: String, msg: Msg) =
+        column {
+            child(text { l ->
+                text(title)
+                textSizeSp(18f)
+                onClick(l, msg)
+            })
+            backgroundRes(android.R.drawable.btn_default)
+        }
+
+    private fun ValidationResult?.format() =
+        this?.let { "Настройки: ${it.settings}\nТелеграм: ${it.telegram}" } ?: ""
 }
 
 class MainActivity : Activity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         program(MainScreen)
     }
 }
-
-//class MainActivity : AppCompatActivity() {
-//
-//    override fun onStart() {
-//        super.onStart()
-//        UpdateReceiver.start()
-//    }
-//
-//    override fun onStop() {
-//        super.onStop()
-//        UpdateReceiver.stop()
-//    }
-//}

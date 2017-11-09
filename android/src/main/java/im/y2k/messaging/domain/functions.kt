@@ -3,34 +3,73 @@ package im.y2k.messaging.domain
 import android.content.ComponentName
 import android.content.SharedPreferences
 import android.provider.Settings.Secure
+import android.service.notification.StatusBarNotification
 import com.facebook.litho.ComponentContext
 import com.pengrad.telegrambot.model.Update
-import im.y2k.messaging.client.NotificationListener
-import im.y2k.messaging.client.getAndroidId
-import im.y2k.messaging.client.map
-import im.y2k.messaging.domain.Domain.isValid
-import kotlinx.coroutines.experimental.channels.actor
-import im.y2k.messaging.domain.Bot as bot
+import com.pengrad.telegrambot.request.SendMessage
+import im.y2k.messaging.client.*
+import im.y2k.messaging.infrastructure.loadNewMessages
 
-fun validateSettings(context: ComponentContext): ValidationResult {
-    val cn = ComponentName(context, NotificationListener::class.java)
-    val enabled = Secure
-        .getString(context.contentResolver, "enabled_notification_listeners")
-        ?.contains(cn.flattenToString())
-        ?: false
+object Notifications {
 
-    context
-        .getSharedPreferences(Preferences.name, 0)
-        .let(Preferences::getToken)
+    fun tryCreateNotification(action: MessageToTelegram, pref: Preference): MessageToTelegramWithUser? {
+        val sendMessage =
+            Preferences
+                .getUserId(pref)
+                .let2(action.text, ::SendMessage)
+        return Preferences
+            .getToken(pref)
+            .mapOption2(sendMessage, ::MessageToTelegramWithUser)
+    }
 
-    return ValidationResult(enabled, false) // FIXME:
+    fun convertNotification(it: StatusBarNotification) =
+        Notification(it.packageName, "" + it.notification.tickerText)
+
+    fun filter(notification: Notification) =
+        notification
+            .takeIf {
+                it.packageName == "com.google.android.talk" && it.tickerText != null
+            }
+            .mapOption { MessageToTelegram(it.tickerText!!) } // FIXME:
 }
 
-suspend fun validateSettings(pincode: String): ValidationResult {
+object Domain {
+
+    fun valid(notificationListeners: String?, packageName: String): Boolean =
+        ComponentName(packageName, NotificationListener::class.java.name)
+            .flattenToString()
+            .let { notificationListeners?.contains(it) }
+            ?: false
+
+    fun findPinCode(xs: List<Update>, pinCode: String): Boolean =
+        xs.any { it.message().text() == pinCode }
+
+    fun getPinCode(androidId: String): String =
+        String.format("%04d", androidId.hashCode()).takeLast(4)
+}
+
+fun validateSettings(context: ComponentContext): ValidationResult {
+    val enabled = Secure
+        .getString(context.contentResolver, "enabled_notification_listeners")
+        .let { Domain.valid(it, context.packageName) }
+
+//    val token =
+//        context
+//            .getSharedPreferences(Preferences.name, 0)
+//            .let(Preferences::getToken)
+
+    val user = context
+        .getSharedPreferences(Preferences.name, 0)
+        .let(Preferences::getUserId)
+
+    return ValidationResult(enabled, user != null)
+}
+
+suspend fun validateSettings(pincode: String, token: String): ValidationResult {
 
     val xs =
-        loadNewMessages()
-            .map { Domain.findPincode(it, pincode) }
+        loadNewMessages(token)
+            .map { Domain.findPinCode(it, pincode) }
 
     TODO()
 }
@@ -44,35 +83,12 @@ object Preferences {
 
     val name = "default"
 
-    fun getToken(p: SharedPreferences): String? =
-        p.getString("token", null)
-}
+    fun getToken(p: Preference): String? =
+        p.map["token"] as String?
 
-object Domain {
+    fun getUserId(p: Preference): String? =
+        p.map["user-id"] as String?
 
-    fun findPincode(xs: List<Update>, pincode: String): Boolean =
-        xs.any { it.message().text() == pincode }
-
-    fun getPinCode(androidId: String): String =
-        String.format("%04d", androidId.hashCode()).takeLast(4)
-
-    fun isValid(sbn: Notification): Boolean =
-        sbn.packageName == "com.google.android.talk" && sbn.tickerText != null
-
-    fun handleMessage(message: String, pincode: String) = when (message) {
-        pincode -> "Бот будет слать вам сообщения с телефона"
-        else -> "Введите пинкод для связи бота с вашим аккаунтом"
-    }
-}
-
-val notificationActor = actor<NotificationWithToken> {
-    while (true) {
-        val x = receive()
-        handleNotification(x.notification, x.id, x.token)
-    }
-}
-
-suspend fun handleNotification(sbn: Notification, id: String, token: String) {
-    if (isValid(sbn))
-        botActor.offer(TelegramMsg(id.toInt(), "" + sbn.tickerText, token))
+    fun getUserId(p: SharedPreferences): String? =
+        p.getString("user-id", null)
 }

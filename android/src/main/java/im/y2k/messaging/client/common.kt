@@ -12,6 +12,7 @@ import com.pengrad.telegrambot.Callback
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.request.BaseRequest
 import com.pengrad.telegrambot.response.BaseResponse
+import im.y2k.messaging.domain.MessageToTelegramWithUser
 import java.io.IOException
 import java.io.Serializable
 import kotlin.coroutines.experimental.suspendCoroutine
@@ -20,10 +21,18 @@ sealed class Result<out T, out E>
 class Ok<out T>(val value: T) : Result<T, Nothing>()
 class Error<out E>(val error: E) : Result<Nothing, E>()
 
-fun <T, E, R> Result<T, E>.map(f: (T) -> R): Result<R, E> = when (this) {
+inline fun <T, E, R> Result<T, E>.map(f: (T) -> R): Result<R, E> = when (this) {
     is Ok -> Ok(f(value))
     is Error -> this
 }
+
+inline fun <T : Any, R : Any> T?.mapOption(f: (T) -> R): R? =
+    if (this != null) f(this) else null
+
+inline fun <T1 : Any, T2 : Any, R : Any> T1?.mapOption2(x: T2?, f: (T1, T2) -> R?): R? =
+    if (this != null && x != null) f(this, x) else null
+
+inline fun <T1, T2, R> T1.let2(x: T2, f: (T1, T2) -> R): R = f(this, x)
 
 suspend fun <T : BaseRequest<T, R>, R : BaseResponse> TelegramBot.executeAsync(request: T): Result<R, Exception> =
     suspendCoroutine {
@@ -58,15 +67,18 @@ fun openSettings(ctx: ComponentContext) =
 @Suppress("UNCHECKED_CAST")
 fun <T : Serializable> Intent.getExtra(key: String): T = getSerializableExtra(key) as T
 
+suspend fun Bot_executeAsync(x: MessageToTelegramWithUser) =
+    TelegramBot(x.token).executeAsync(x.msg)
+
 class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Instance = this
+        instance = this
         SoLoader.init(this, false)
     }
 
     companion object {
-        lateinit var Instance: Context
+        lateinit var instance: Context private set
     }
 }

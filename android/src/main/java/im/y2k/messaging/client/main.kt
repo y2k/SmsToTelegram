@@ -9,18 +9,18 @@ import im.y2k.messaging.client.MainScreen.Model
 import im.y2k.messaging.client.MainScreen.Msg
 import im.y2k.messaging.client.MainScreen.Msg.*
 import im.y2k.messaging.domain.ValidationResult
-import im.y2k.messaging.domain.getToken
+import im.y2k.messaging.domain.getPinCode
 import im.y2k.messaging.domain.validateSettings
 import im.y2k.messaging.infrastructure.notificationActor
 import y2k.litho.elmish.*
 
 object MainScreen : ElmFunctions<Model, Msg> {
-    data class Model(val token: String?,
+    data class Model(val pin: String?,
                      val status: ValidationResult?,
                      val accessToken: String?)
 
     sealed class Msg {
-        class TokenLoaded(val token: String) : Msg()
+        class PinCodeLoaded(val pin: String) : Msg()
         object OpenSettings : Msg()
         object OpenTelegram : Msg()
         object ValidateMsg : Msg()
@@ -29,10 +29,10 @@ object MainScreen : ElmFunctions<Model, Msg> {
     }
 
     override fun init() =
-        Model(null, null, null) to Cmd.fromContext(::getToken, ::TokenLoaded)
+        Model(null, null, null) to Cmd.fromContext(::getPinCode, ::PinCodeLoaded)
 
     override fun update(model: Model, msg: Msg) = when (msg) {
-        is TokenLoaded -> model.copy(token = msg.token) to Cmd.none<Msg>()
+        is PinCodeLoaded -> model.copy(pin = msg.pin) to Cmd.none<Msg>()
         OpenSettings -> model to Cmd.fromContext(::openSettings)
         OpenTelegram -> model to Cmd.fromContext(::openTelegram)
         ValidateMsg -> model to Cmd.fromContext(::validateSettings, ::ValidateResultMsg)
@@ -53,7 +53,7 @@ object MainScreen : ElmFunctions<Model, Msg> {
                 },
                 editText {
                     editable(false)
-                    text(model.token)
+                    text(model.pin)
                     textSizeSp(16f)
                 },
                 button("Открыть telegram", OpenTelegram),

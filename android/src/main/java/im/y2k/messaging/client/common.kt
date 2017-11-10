@@ -2,7 +2,6 @@ package im.y2k.messaging.client
 
 import android.app.Application
 import android.content.ContentResolver
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -11,10 +10,12 @@ import com.facebook.soloader.SoLoader
 import com.pengrad.telegrambot.Callback
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.request.BaseRequest
+import com.pengrad.telegrambot.request.GetUpdates
 import com.pengrad.telegrambot.response.BaseResponse
 import im.y2k.messaging.domain.MessageToTelegramWithUser
+import im.y2k.messaging.domain.Preference
+import im.y2k.messaging.domain.Preferences
 import java.io.IOException
-import java.io.Serializable
 import kotlin.coroutines.experimental.suspendCoroutine
 
 sealed class Result<out T, out E>
@@ -23,6 +24,11 @@ class Error<out E>(val error: E) : Result<Nothing, E>()
 
 inline fun <T, E, R> Result<T, E>.map(f: (T) -> R): Result<R, E> = when (this) {
     is Ok -> Ok(f(value))
+    is Error -> this
+}
+
+inline fun <T1, T2, E, R> Result<T1, E>.map2(x: T2, f: (T1, T2) -> R): Result<R, E> = when (this) {
+    is Ok -> Ok(f(value, x))
     is Error -> this
 }
 
@@ -47,6 +53,17 @@ suspend fun <T : BaseRequest<T, R>, R : BaseResponse> TelegramBot.executeAsync(r
         })
     }
 
+fun Application.getPreferences(): Preference =
+    getSharedPreferences(Preferences.name, 0).all
+        .let(::Preference)
+
+fun Application.putStringPref(xy: Pair<String, String>) {
+    getSharedPreferences(Preferences.name, 0)
+        .edit()
+        .putString(xy.first, xy.second)
+        .apply()
+}
+
 fun getAndroidId(resolver: ContentResolver): String =
     Settings.Secure.getString(resolver, Settings.Secure.ANDROID_ID)
 
@@ -64,11 +81,13 @@ fun openSettings(ctx: ComponentContext) =
         .let(::Intent)
         .let(ctx::startActivity)
 
-@Suppress("UNCHECKED_CAST")
-fun <T : Serializable> Intent.getExtra(key: String): T = getSerializableExtra(key) as T
+object Bot {
+    suspend fun execute(token: String, request: GetUpdates) =
+        TelegramBot(token).executeAsync(request)
 
-suspend fun Bot_executeAsync(x: MessageToTelegramWithUser) =
-    TelegramBot(x.token).executeAsync(x.msg)
+    suspend fun execute(x: MessageToTelegramWithUser) =
+        TelegramBot(x.token).executeAsync(x.msg)
+}
 
 class App : Application() {
 
@@ -79,6 +98,6 @@ class App : Application() {
     }
 
     companion object {
-        lateinit var instance: Context private set
+        lateinit var instance: Application private set
     }
 }

@@ -1,14 +1,14 @@
 package im.y2k.messaging.domain
 
 import android.content.ComponentName
-import android.content.SharedPreferences
 import android.provider.Settings.Secure
 import android.service.notification.StatusBarNotification
 import com.facebook.litho.ComponentContext
 import com.pengrad.telegrambot.model.Update
+import com.pengrad.telegrambot.request.GetUpdates
 import com.pengrad.telegrambot.request.SendMessage
+import com.pengrad.telegrambot.response.GetUpdatesResponse
 import im.y2k.messaging.client.*
-import im.y2k.messaging.infrastructure.loadNewMessages
 
 object Notifications {
 
@@ -35,49 +35,55 @@ object Notifications {
 
 object Domain {
 
-    fun valid(notificationListeners: String?, packageName: String): Boolean =
+    fun findUserForPinCode(updates: List<Update>, pinCode: String) =
+        updates
+            .find { it.message().text() == pinCode }
+            .mapOption { it.message().from().id().toString() }
+
+    fun toPinCode(androidId: String): String =
+        String.format("%04d", androidId.hashCode()).takeLast(4)
+
+    fun valid(pref: Preference, secureValue: String?, packageName: String): ValidationResult {
+        val isHasUserId = Preferences.getUserId(pref) != null
+        return secureValue
+            .let2(packageName, Domain::valid)
+            .let2(isHasUserId, ::ValidationResult)
+    }
+
+    private fun valid(notificationListeners: String?, packageName: String): Boolean =
         ComponentName(packageName, NotificationListener::class.java.name)
             .flattenToString()
             .let { notificationListeners?.contains(it) }
             ?: false
-
-    fun findPinCode(xs: List<Update>, pinCode: String): Boolean =
-        xs.any { it.message().text() == pinCode }
-
-    fun getPinCode(androidId: String): String =
-        String.format("%04d", androidId.hashCode()).takeLast(4)
 }
 
-fun validateSettings(context: ComponentContext): ValidationResult {
-    val enabled = Secure
-        .getString(context.contentResolver, "enabled_notification_listeners")
-        .let { Domain.valid(it, context.packageName) }
-
-//    val token =
-//        context
-//            .getSharedPreferences(Preferences.name, 0)
-//            .let(Preferences::getToken)
-
-    val user = context
-        .getSharedPreferences(Preferences.name, 0)
-        .let(Preferences::getUserId)
-
-    return ValidationResult(enabled, user != null)
+fun validateSettings(_0: ComponentContext): ValidationResult {
+    val pref = App.instance.getPreferences()
+    val secureValue = Secure.getString(
+        App.instance.contentResolver, "enabled_notification_listeners")
+    val packageName = App.instance.packageName
+    return Domain.valid(pref, secureValue, packageName)
 }
 
-suspend fun validateSettings(pincode: String, token: String): ValidationResult {
+suspend fun loadUserIdForPincode(pinCode: String, token: String) {
+    token
+        .let(Preferences::setToken)
+        .let(App.instance::putStringPref)
 
-    val xs =
-        loadNewMessages(token)
-            .map { Domain.findPinCode(it, pincode) }
-
-    TODO()
+    Bot.execute(token, GetUpdates())
+        .map(GetUpdatesResponse::updates)
+        .map2(pinCode, Domain::findUserForPinCode)
+        .map { userId ->
+            userId
+                .mapOption(Preferences::setUserId)
+                .mapOption(App.instance::putStringPref)
+        }
 }
 
-fun getToken(ctx: ComponentContext): String =
+fun getPinCode(ctx: ComponentContext): String =
     ctx.contentResolver
         .let(::getAndroidId)
-        .let(Domain::getPinCode)
+        .let(Domain::toPinCode)
 
 object Preferences {
 
@@ -89,6 +95,9 @@ object Preferences {
     fun getUserId(p: Preference): String? =
         p.map["user-id"] as String?
 
-    fun getUserId(p: SharedPreferences): String? =
-        p.getString("user-id", null)
+    fun setToken(value: String) =
+        "token" to value
+
+    fun setUserId(value: String) =
+        "user-id" to value
 }

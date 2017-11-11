@@ -9,7 +9,8 @@ import com.pengrad.telegrambot.model.Update
 import com.pengrad.telegrambot.request.GetUpdates
 import com.pengrad.telegrambot.request.SendMessage
 import com.pengrad.telegrambot.response.GetUpdatesResponse
-import im.y2k.messaging.client.*
+import im.y2k.messaging.NotificationListener
+import im.y2k.messaging.infrastructure.*
 
 object Notifications {
 
@@ -58,16 +59,6 @@ object Domain {
             ?: false
 }
 
-fun validatePrepareForWork(`_`: ComponentContext?): ValidationResult {
-    val app = App.instance
-    val secureValue = Secure.getString(
-        app.contentResolver, "enabled_notification_listeners")
-    val pref = app.getPreferences()
-    val packageName = app.packageName
-
-    return Domain.checkPreRequests(pref, secureValue, packageName)
-}
-
 suspend fun trySaveOwnerUserId(token: AccessToken?) {
     token.mapOption { trySaveOwnerUserId_(it) }
 }
@@ -82,11 +73,19 @@ private suspend fun trySaveOwnerUserId_(token: AccessToken) {
     Bot.execute(token.value, GetUpdates())
         .map(GetUpdatesResponse::updates)
         .map2(pinCode, Domain::findUserForPinCode)
-        .map { userId ->
-            userId
-                .mapOption(Preferences::setUserId)
-                .mapOption(App.instance::putStringPref)
-        }
+        .toOption()
+        .mapOption(Preferences::setUserId)
+        .mapOption(App.instance::putStringPref)
+}
+
+fun validatePrepareForWork(_ignore: ComponentContext?): ValidationResult {
+    val app = App.instance
+    val secureValue = Secure.getString(
+        app.contentResolver, "enabled_notification_listeners")
+    val pref = app.getPreferences()
+    val packageName = app.packageName
+
+    return Domain.checkPreRequests(pref, secureValue, packageName)
 }
 
 fun getPinCode(ctx: Context): String =

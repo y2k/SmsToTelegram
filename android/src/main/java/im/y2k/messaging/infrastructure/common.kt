@@ -1,4 +1,4 @@
-package im.y2k.messaging.client
+package im.y2k.messaging.infrastructure
 
 import android.app.Application
 import android.content.ContentResolver
@@ -25,6 +25,11 @@ class Error<out E>(val error: E) : Result<Nothing, E>()
 inline fun <T, E, R> Result<T, E>.map(f: (T) -> R): Result<R, E> = when (this) {
     is Ok -> Ok(f(value))
     is Error -> this
+}
+
+fun <T> Result<T, *>.toOption(): T? = when (this) {
+    is Ok -> this.value
+    is Error -> null
 }
 
 inline fun <T1, T2, E, R> Result<T1, E>.map2(x: T2, f: (T1, T2) -> R): Result<R, E> = when (this) {

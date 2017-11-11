@@ -1,15 +1,19 @@
-package im.y2k.messaging.client
+package im.y2k.messaging
 
 import android.app.Activity
 import android.graphics.Color
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import im.y2k.messaging.client.MainScreen.Model
-import im.y2k.messaging.client.MainScreen.Msg
-import im.y2k.messaging.client.MainScreen.Msg.*
+import com.facebook.yoga.YogaEdge
+import im.y2k.messaging.MainScreen.Model
+import im.y2k.messaging.MainScreen.Msg
+import im.y2k.messaging.MainScreen.Msg.*
+import im.y2k.messaging.client.R
 import im.y2k.messaging.domain.*
 import im.y2k.messaging.infrastructure.notificationActor
+import im.y2k.messaging.infrastructure.openSettings
+import im.y2k.messaging.infrastructure.openTelegram
 import y2k.litho.elmish.*
 
 object MainScreen : ElmFunctions<Model, Msg> {
@@ -43,6 +47,7 @@ object MainScreen : ElmFunctions<Model, Msg> {
 
     override fun view(model: Model) =
         column {
+            paddingDip(YogaEdge.ALL, 4)
             children(
                 head("1) Доступ к нотификациям"),
                 button("Настройки", OpenSettings),
@@ -50,43 +55,45 @@ object MainScreen : ElmFunctions<Model, Msg> {
                 head("2) Создать бота и ввести ему токен"),
                 text {
                     text("Токен")
-                    textSizeSp(16f)
+                    textSizeSp(18f)
                 },
                 editText {
                     editable(false)
                     text(model.pin?.value)
-                    textSizeSp(16f)
+                    textSizeSp(18f)
                 },
                 button("Открыть telegram", OpenTelegram),
 
                 head("3) Авторизовать бота"),
                 editText {
                     hint("Access Token")
-                    textSizeSp(16f)
+                    textSizeSp(18f)
                     onTextChanged(::AccessTokenMsg)
                 },
                 button("OK", ValidateMsg),
                 text {
                     text(model.status.format())
                     textColor(Color.RED)
-                    textSizeSp(16f)
+                    textSizeSp(18f)
                 })
         }
 
     private fun head(title: String) =
         text {
             text(title)
-            textSizeSp(18f)
+            textSizeSp(20f)
         }
 
     private fun button(title: String, msg: Msg) =
         column {
-            child(text { l ->
+            backgroundRes(R.drawable.button_background)
+            paddingDip(YogaEdge.ALL, 6)
+            onClick(msg)
+            childText {
                 text(title)
+                textColor(Color.WHITE)
                 textSizeSp(18f)
-                onClick(l, msg)
-            })
-            backgroundRes(android.R.drawable.btn_default)
+            }
         }
 
     private fun ValidationResult?.format() =

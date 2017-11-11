@@ -14,3 +14,6 @@ class Preference(val map: Map<String, *>)
 
 class MessageToTelegramWithUser(val token: String, val msg: SendMessage)
 class MessageToTelegram(val text: String)
+
+class AccessToken(val value: String)
+class PinCode(val value: String)

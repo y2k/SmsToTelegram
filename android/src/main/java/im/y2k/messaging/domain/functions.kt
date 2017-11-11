@@ -1,6 +1,7 @@
 package im.y2k.messaging.domain
 
 import android.content.ComponentName
+import android.content.Context
 import android.provider.Settings.Secure
 import android.service.notification.StatusBarNotification
 import com.facebook.litho.ComponentContext
@@ -43,7 +44,7 @@ object Domain {
     fun toPinCode(androidId: String): String =
         String.format("%04d", androidId.hashCode()).takeLast(4)
 
-    fun valid(pref: Preference, secureValue: String?, packageName: String): ValidationResult {
+    fun checkPreRequests(pref: Preference, secureValue: String?, packageName: String): ValidationResult {
         val isHasUserId = Preferences.getUserId(pref) != null
         return secureValue
             .let2(packageName, Domain::valid)
@@ -57,20 +58,28 @@ object Domain {
             ?: false
 }
 
-fun validateSettings(_0: ComponentContext): ValidationResult {
-    val pref = App.instance.getPreferences()
+fun validatePrepareForWork(`_`: ComponentContext?): ValidationResult {
+    val app = App.instance
     val secureValue = Secure.getString(
-        App.instance.contentResolver, "enabled_notification_listeners")
-    val packageName = App.instance.packageName
-    return Domain.valid(pref, secureValue, packageName)
+        app.contentResolver, "enabled_notification_listeners")
+    val pref = app.getPreferences()
+    val packageName = app.packageName
+
+    return Domain.checkPreRequests(pref, secureValue, packageName)
 }
 
-suspend fun loadUserIdForPincode(pinCode: String, token: String) {
+suspend fun trySaveOwnerUserId(token: AccessToken?) {
+    token.mapOption { trySaveOwnerUserId_(it) }
+}
+
+private suspend fun trySaveOwnerUserId_(token: AccessToken) {
     token
+        .value
         .let(Preferences::setToken)
         .let(App.instance::putStringPref)
 
-    Bot.execute(token, GetUpdates())
+    val pinCode = App.instance.let(::getPinCode)
+    Bot.execute(token.value, GetUpdates())
         .map(GetUpdatesResponse::updates)
         .map2(pinCode, Domain::findUserForPinCode)
         .map { userId ->
@@ -80,7 +89,7 @@ suspend fun loadUserIdForPincode(pinCode: String, token: String) {
         }
 }
 
-fun getPinCode(ctx: ComponentContext): String =
+fun getPinCode(ctx: Context): String =
     ctx.contentResolver
         .let(::getAndroidId)
         .let(Domain::toPinCode)

@@ -8,16 +8,14 @@ import android.service.notification.StatusBarNotification
 import im.y2k.messaging.client.MainScreen.Model
 import im.y2k.messaging.client.MainScreen.Msg
 import im.y2k.messaging.client.MainScreen.Msg.*
-import im.y2k.messaging.domain.ValidationResult
-import im.y2k.messaging.domain.getPinCode
-import im.y2k.messaging.domain.validateSettings
+import im.y2k.messaging.domain.*
 import im.y2k.messaging.infrastructure.notificationActor
 import y2k.litho.elmish.*
 
 object MainScreen : ElmFunctions<Model, Msg> {
-    data class Model(val pin: String?,
+    data class Model(val pin: PinCode?,
                      val status: ValidationResult?,
-                     val accessToken: String?)
+                     val token: AccessToken?)
 
     sealed class Msg {
         class PinCodeLoaded(val pin: String) : Msg()
@@ -32,12 +30,15 @@ object MainScreen : ElmFunctions<Model, Msg> {
         Model(null, null, null) to Cmd.fromContext(::getPinCode, ::PinCodeLoaded)
 
     override fun update(model: Model, msg: Msg) = when (msg) {
-        is PinCodeLoaded -> model.copy(pin = msg.pin) to Cmd.none<Msg>()
+        is PinCodeLoaded -> model.copy(pin = PinCode(msg.pin)) to Cmd.none<Msg>()
         OpenSettings -> model to Cmd.fromContext(::openSettings)
         OpenTelegram -> model to Cmd.fromContext(::openTelegram)
-        ValidateMsg -> model to Cmd.fromContext(::validateSettings, ::ValidateResultMsg)
+        ValidateMsg -> model.copy(status = null) to
+            Cmd.batch(
+                Cmd.fromSuspend { trySaveOwnerUserId(model.token) },
+                Cmd.fromContext(::validatePrepareForWork, ::ValidateResultMsg))
         is ValidateResultMsg -> model.copy(status = msg.status) to Cmd.none()
-        is AccessTokenMsg -> model.copy(accessToken = msg.token) to Cmd.none()
+        is AccessTokenMsg -> model.copy(token = AccessToken(msg.token)) to Cmd.none()
     }
 
     override fun view(model: Model) =
@@ -53,12 +54,12 @@ object MainScreen : ElmFunctions<Model, Msg> {
                 },
                 editText {
                     editable(false)
-                    text(model.pin)
+                    text(model.pin?.value)
                     textSizeSp(16f)
                 },
                 button("Открыть telegram", OpenTelegram),
 
-                head("3) Протестировать настройки"),
+                head("3) Авторизовать бота"),
                 editText {
                     hint("Access Token")
                     textSizeSp(16f)
@@ -100,7 +101,6 @@ class MainActivity : Activity() {
 }
 
 class NotificationListener : NotificationListenerService() {
-
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         notificationActor.offer(sbn)
     }

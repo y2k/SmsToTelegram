@@ -5,7 +5,7 @@ import im.y2k.messaging.client.*
 import im.y2k.messaging.domain.Notifications
 import kotlinx.coroutines.experimental.channels.actor
 
-val notificationActor = actor<StatusBarNotification> {
+val notificationActor = actor<StatusBarNotification>(capacity = 20) {
     while (true) {
         val receive = receive()
         val pref = App.instance.getPreferences()

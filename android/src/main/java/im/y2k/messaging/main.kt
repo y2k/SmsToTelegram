@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.facebook.litho.ComponentLayout.ContainerBuilder
 import com.facebook.yoga.YogaEdge
 import im.y2k.messaging.MainScreen.Model
 import im.y2k.messaging.MainScreen.Msg
@@ -14,7 +15,8 @@ import im.y2k.messaging.domain.*
 import im.y2k.messaging.infrastructure.notificationActor
 import im.y2k.messaging.infrastructure.openSettings
 import im.y2k.messaging.infrastructure.openTelegram
-import y2k.litho.elmish.*
+import y2k.litho.elmish.experimental.*
+import y2k.litho.elmish.experimental.Views.column
 
 object MainScreen : ElmFunctions<Model, Msg> {
     data class Model(val pin: PinCode?,
@@ -47,49 +49,53 @@ object MainScreen : ElmFunctions<Model, Msg> {
 
     override fun view(model: Model) =
         column {
-            paddingDip(YogaEdge.ALL, 4)
-            children(
-                head("1) Доступ к нотификациям"),
-                button("Настройки", OpenSettings),
+            paddingDip(YogaEdge.ALL, 4f)
 
-                head("2) Создать бота и ввести ему токен"),
-                text {
-                    text("Токен")
-                    textSizeSp(18f)
-                },
-                editText {
-                    editable(false)
-                    text(model.pin?.value)
-                    textSizeSp(18f)
-                },
-                button("Открыть telegram", OpenTelegram),
+            head("1) Доступ к нотификациям")
+            button("Настройки", OpenSettings)
 
-                head("3) Авторизовать бота"),
-                editText {
-                    hint("Access Token")
-                    textSizeSp(18f)
-                    onTextChanged(::AccessTokenMsg)
-                },
-                button("OK", ValidateMsg),
-                text {
-                    text(model.status.format())
-                    textColor(Color.RED)
-                    textSizeSp(18f)
-                })
+            head("2) Создать бота и ввести ему токен")
+            text {
+                text("Токен")
+                textSizeSp(18f)
+            }
+            editText {
+                editable(false)
+                text(model.pin?.value)
+                textSizeSp(18f)
+            }
+            button("Открыть telegram", OpenTelegram)
+
+            head("3) Авторизовать бота")
+            editText {
+                hint("Access Token")
+                textSizeSp(18f)
+
+                onTextChanged(::AccessTokenMsg)
+            }
+
+            button("OK", ValidateMsg)
+            text {
+                text(model.status.format())
+                textColor(Color.RED)
+                textSizeSp(18f)
+            }
         }
 
-    private fun head(title: String) =
+    private fun ContainerBuilder.head(title: String) =
         text {
             text(title)
             textSizeSp(20f)
         }
 
-    private fun button(title: String, msg: Msg) =
+    private fun ContainerBuilder.button(title: String, msg: Msg) =
         column {
             backgroundRes(R.drawable.button_background)
-            paddingDip(YogaEdge.ALL, 6)
+            paddingDip(YogaEdge.ALL, 6f)
+
             onClick(msg)
-            childText {
+
+            text {
                 text(title)
                 textColor(Color.WHITE)
                 textSizeSp(18f)

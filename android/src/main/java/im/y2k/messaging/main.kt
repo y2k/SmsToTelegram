@@ -12,16 +12,17 @@ import im.y2k.messaging.MainScreen.Msg
 import im.y2k.messaging.MainScreen.Msg.*
 import im.y2k.messaging.client.R
 import im.y2k.messaging.domain.*
+import im.y2k.messaging.infrastructure.Log
+import im.y2k.messaging.infrastructure.Navigation
 import im.y2k.messaging.infrastructure.notificationActor
-import im.y2k.messaging.infrastructure.openSettings
-import im.y2k.messaging.infrastructure.openTelegram
 import y2k.litho.elmish.experimental.*
-import y2k.litho.elmish.experimental.Views.column
 
-object MainScreen : ElmFunctions<Model, Msg> {
-    data class Model(val pin: PinCode?,
-                     val status: ValidationResult?,
-                     val token: AccessToken?)
+class MainScreen : ElmFunctions<Model, Msg> {
+
+    data class Model(
+        val pin: PinCode? = null,
+        val status: ValidationResult? = null,
+        val token: AccessToken? = null)
 
     sealed class Msg {
         class PinCodeLoaded(val pin: String) : Msg()
@@ -30,24 +31,26 @@ object MainScreen : ElmFunctions<Model, Msg> {
         object ValidateMsg : Msg()
         class ValidateResultMsg(val status: ValidationResult) : Msg()
         class AccessTokenMsg(val token: String) : Msg()
+        class ErrorMsg(val e: Exception) : Msg()
     }
 
     override fun init() =
-        Model(null, null, null) to Cmd.fromContext(::getPinCode, ::PinCodeLoaded)
+        Model() to Cmd.fromSuspend({ getPinCode() }, ::PinCodeLoaded, ::ErrorMsg)
 
     override fun update(model: Model, msg: Msg) = when (msg) {
-        is PinCodeLoaded -> model.copy(pin = PinCode(msg.pin)) to Cmd.none<Msg>()
-        OpenSettings -> model to Cmd.fromContext(::openSettings)
-        OpenTelegram -> model to Cmd.fromContext(::openTelegram)
+        is PinCodeLoaded -> model.copy(pin = PinCode(msg.pin)) to Cmd.none()
+        OpenSettings -> model to Cmd.fromContext({ Navigation.openSettings(it) })
+        OpenTelegram -> model to Cmd.fromContext({ Navigation.openTelegram(it) })
         ValidateMsg -> model.copy(status = null) to
             Cmd.batch(
                 Cmd.fromSuspend { trySaveOwnerUserId(model.token) },
-                Cmd.fromContext(::validatePrepareForWork, ::ValidateResultMsg))
+                Cmd.fromSuspend({ validatePrepareForWork() }, ::ValidateResultMsg, ::ErrorMsg))
         is ValidateResultMsg -> model.copy(status = msg.status) to Cmd.none()
         is AccessTokenMsg -> model.copy(token = AccessToken(msg.token)) to Cmd.none()
+        is ErrorMsg -> Log.log(msg.e, model) to Cmd.none()
     }
 
-    override fun view(model: Model) =
+    override fun ContainerBuilder.view(model: Model) =
         column {
             paddingDip(YogaEdge.ALL, 4f)
 
@@ -109,7 +112,7 @@ object MainScreen : ElmFunctions<Model, Msg> {
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        program(MainScreen)
+        program<MainScreen>()
     }
 }
 

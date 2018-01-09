@@ -8,7 +8,7 @@ class Notification(
     val tickerText: String?
 ) : Serializable
 
-class ValidationResult(val settings: Boolean, val telegram: Boolean)
+class ValidationResult(val telegram: Boolean, val settings: Boolean)
 
 class Preference(val map: Map<String, *>)
 

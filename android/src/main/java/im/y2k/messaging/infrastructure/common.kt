@@ -2,10 +2,10 @@ package im.y2k.messaging.infrastructure
 
 import android.app.Application
 import android.content.ContentResolver
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import com.facebook.litho.ComponentContext
 import com.facebook.soloader.SoLoader
 import com.pengrad.telegrambot.Callback
 import com.pengrad.telegrambot.TelegramBot
@@ -15,12 +15,19 @@ import com.pengrad.telegrambot.response.BaseResponse
 import im.y2k.messaging.domain.MessageToTelegramWithUser
 import im.y2k.messaging.domain.Preference
 import im.y2k.messaging.domain.Preferences
+import kotlinx.types.Result
+import kotlinx.types.Result.Error
+import kotlinx.types.Result.Ok
 import java.io.IOException
 import kotlin.coroutines.experimental.suspendCoroutine
 
-sealed class Result<out T, out E>
-class Ok<out T>(val value: T) : Result<T, Nothing>()
-class Error<out E>(val error: E) : Result<Nothing, E>()
+object Log {
+
+    fun <T> log(e: Exception, x: T): T {
+        e.printStackTrace()
+        return x
+    }
+}
 
 inline fun <T, E, R> Result<T, E>.map(f: (T) -> R): Result<R, E> = when (this) {
     is Ok -> Ok(f(value))
@@ -43,7 +50,10 @@ inline fun <T : Any, R : Any> T?.mapOption(f: (T) -> R): R? =
 inline fun <T1 : Any, T2 : Any, R : Any> T1?.mapOption2(x: T2?, f: (T1, T2) -> R?): R? =
     if (this != null && x != null) f(this, x) else null
 
-inline fun <T1, T2, R> T1.let2(x: T2, f: (T1, T2) -> R): R = f(this, x)
+inline fun <P1, P2, R> flip(crossinline f: (P1, P2) -> R): ((P2, P1) -> R) =
+    { p2, p1 -> f(p1, p2) }
+
+inline fun <T1, T2, R> T2.let(f: (T1, T2) -> R, x: T1): R = f(x, this)
 
 suspend fun <T : BaseRequest<T, R>, R : BaseResponse> TelegramBot.executeAsync(request: T): Result<R, Exception> =
     suspendCoroutine {
@@ -58,35 +68,39 @@ suspend fun <T : BaseRequest<T, R>, R : BaseResponse> TelegramBot.executeAsync(r
         })
     }
 
-fun Application.getPreferences(): Preference =
+fun Context.getPreferences(): Preference =
     getSharedPreferences(Preferences.name, 0).all
         .let(::Preference)
 
-fun Application.putStringPref(xy: Pair<String, String>) {
+fun Application.putStringPref(xy: Pair<String, Any>) {
     getSharedPreferences(Preferences.name, 0)
         .edit()
-        .putString(xy.first, xy.second)
+        .putString(xy.first, xy.second.toString())
         .apply()
 }
 
 fun getAndroidId(resolver: ContentResolver): String =
     Settings.Secure.getString(resolver, Settings.Secure.ANDROID_ID)
 
-fun openTelegram(ctx: ComponentContext) =
-    "https://telegram.me/BotFather"
-        .let(Uri::parse)
-        .let(::makeIntentView)
-        .let(ctx::startActivity)
+object Navigation {
 
-private fun makeIntentView(uri: Uri) =
-    Intent(Intent.ACTION_VIEW, uri)
+    suspend fun openTelegram(ctx: Context) =
+        "https://telegram.me/BotFather"
+            .let(Uri::parse)
+            .let(::makeIntentView)
+            .let(ctx::startActivity)
 
-fun openSettings(ctx: ComponentContext) =
-    "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"
-        .let(::Intent)
-        .let(ctx::startActivity)
+    private fun makeIntentView(uri: Uri) =
+        Intent(Intent.ACTION_VIEW, uri)
+
+    suspend fun openSettings(ctx: Context) =
+        "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"
+            .let(::Intent)
+            .let(ctx::startActivity)
+}
 
 object Bot {
+
     suspend fun execute(token: String, request: GetUpdates) =
         TelegramBot(token).executeAsync(request)
 
@@ -98,11 +112,12 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
+        _instance = this
         SoLoader.init(this, false)
     }
 
     companion object {
-        lateinit var instance: Application private set
+        private lateinit var _instance: Application
+        val instance: Application get() = _instance
     }
 }
